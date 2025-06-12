@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ProductModal from '../ProductModal'
 import { Product } from '@/types/database'
@@ -208,10 +208,14 @@ describe('ProductModal', () => {
     const checkbox = screen.getByLabelText('上架销售')
     expect(checkbox).toBeChecked()
     
-    await user.click(checkbox)
+    await act(async () => {
+      await user.click(checkbox)
+    })
     expect(checkbox).not.toBeChecked()
     
-    await user.click(checkbox)
+    await act(async () => {
+      await user.click(checkbox)
+    })
     expect(checkbox).toBeChecked()
   })
 

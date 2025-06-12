@@ -27,7 +27,9 @@ export default function ProductCard({ product, onEdit, onDelete }: ProductCardPr
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="image-placeholder w-full h-48 rounded-lg" />
+          <div className="image-placeholder w-full h-48 rounded-lg flex items-center justify-center">
+            <span className="text-gray-500 text-sm">暂无图片</span>
+          </div>
         )}
       </div>
       

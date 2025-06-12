@@ -16,6 +16,9 @@ const customJestConfig = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(@supabase/supabase-js|@supabase/realtime-js|@supabase/postgrest-js|@supabase/storage-js|@supabase/gotrue-js)/)',
+  ],
 }
 
 module.exports = createJestConfig(customJestConfig)

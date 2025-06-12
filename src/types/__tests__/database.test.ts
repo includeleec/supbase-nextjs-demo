@@ -126,4 +126,150 @@ describe('Database Types', () => {
       expect(mockDatabase.public.Tables.products).toBeDefined()
     })
   })
+
+  describe('Field Validation', () => {
+    it('should validate price field is number', () => {
+      const product: Product = {
+        id: '1',
+        name: '测试商品',
+        description: null,
+        price: 99.99,
+        image_url: null,
+        category: null,
+        stock_quantity: 10,
+        is_active: true,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      }
+
+      expect(typeof product.price).toBe('number')
+      expect(product.price).toBeGreaterThan(0)
+    })
+
+    it('should validate boolean fields', () => {
+      const product: Product = {
+        id: '1',
+        name: '测试商品',
+        description: null,
+        price: 99.99,
+        image_url: null,
+        category: null,
+        stock_quantity: 10,
+        is_active: true,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      }
+
+      expect(typeof product.is_active).toBe('boolean')
+    })
+
+    it('should validate stock_quantity as positive integer', () => {
+      const product: Product = {
+        id: '1',
+        name: '测试商品',
+        description: null,
+        price: 99.99,
+        image_url: null,
+        category: null,
+        stock_quantity: 10,
+        is_active: true,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      }
+
+      expect(typeof product.stock_quantity).toBe('number')
+      expect(product.stock_quantity).toBeGreaterThanOrEqual(0)
+      expect(Number.isInteger(product.stock_quantity)).toBe(true)
+    })
+
+    it('should validate date fields format', () => {
+      const product: Product = {
+        id: '1',
+        name: '测试商品',
+        description: null,
+        price: 99.99,
+        image_url: null,
+        category: null,
+        stock_quantity: 10,
+        is_active: true,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      }
+
+      expect(typeof product.created_at).toBe('string')
+      expect(typeof product.updated_at).toBe('string')
+      expect(new Date(product.created_at)).toBeInstanceOf(Date)
+      expect(new Date(product.updated_at)).toBeInstanceOf(Date)
+    })
+  })
+
+  describe('CRUD Type Compatibility', () => {
+    it('should allow Product to be used in read operations', () => {
+      const product: Product = {
+        id: '1',
+        name: '测试商品',
+        description: '描述',
+        price: 99.99,
+        image_url: 'https://example.com/image.jpg',
+        category: '分类',
+        stock_quantity: 10,
+        is_active: true,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      }
+
+      // 模拟从数据库读取操作
+      const readProduct = (p: Product) => p
+      expect(readProduct(product)).toEqual(product)
+    })
+
+    it('should allow ProductInsert for create operations', () => {
+      const newProduct: ProductInsert = {
+        name: '新商品',
+        description: '新描述',
+        price: 199.99,
+        category: '新分类',
+        stock_quantity: 5,
+        is_active: true,
+      }
+
+      // 模拟创建操作
+      const createProduct = (p: ProductInsert) => p
+      expect(createProduct(newProduct)).toEqual(newProduct)
+    })
+
+    it('should allow ProductUpdate for update operations', () => {
+      const updateData: ProductUpdate = {
+        name: '更新的商品名',
+        price: 299.99,
+        is_active: false,
+      }
+
+      // 模拟更新操作
+      const updateProduct = (p: ProductUpdate) => p
+      expect(updateProduct(updateData)).toEqual(updateData)
+    })
+  })
+
+  describe('Type Safety', () => {
+    it('should ensure required fields in ProductInsert', () => {
+      // 这个测试确保 TypeScript 会在编译时检查必需字段
+      const validInsert: ProductInsert = {
+        name: '必需字段测试',
+        price: 99.99,
+      }
+
+      expect(validInsert.name).toBeDefined()
+      expect(validInsert.price).toBeDefined()
+    })
+
+    it('should allow optional fields to be omitted in ProductUpdate', () => {
+      const minimalUpdate: ProductUpdate = {
+        price: 149.99,
+      }
+
+      expect(minimalUpdate.price).toBe(149.99)
+      expect(minimalUpdate.name).toBeUndefined()
+    })
+  })
 })
