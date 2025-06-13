@@ -8,6 +8,7 @@ import ProductModal from '@/components/ProductModal'
 import { toast } from '@/lib/toast'
 import { useAuth } from '@/contexts/AuthContext'
 import LoginForm from '@/components/LoginForm'
+import CloudflareDebugPanel from '@/components/CloudflareDebugPanel'
 
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -202,6 +203,8 @@ export default function HomePage() {
         onSave={handleSaveProduct}
         product={editingProduct}
       />
+      
+      <CloudflareDebugPanel />
     </div>
   )
 }

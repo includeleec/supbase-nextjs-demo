@@ -2,12 +2,46 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import ProductCard from '../ProductCard'
 import { Product } from '@/types/database'
 
+// Mock the cloudflare-images module
+jest.mock('@/lib/cloudflare-images', () => ({
+  getImageVariants: jest.fn((imageId: string) => ({
+    thumbnail: `https://imagedelivery.net/hash/${imageId}/thumbnail`,
+    small: `https://imagedelivery.net/hash/${imageId}/small`,
+    medium: `https://imagedelivery.net/hash/${imageId}/medium`,
+    large: `https://imagedelivery.net/hash/${imageId}/large`,
+    original: `https://imagedelivery.net/hash/${imageId}/original`,
+  }))
+}))
+
+// Mock debug-images
+jest.mock('@/lib/debug-images', () => ({
+  debugImageDisplay: jest.fn()
+}))
+
 const mockProduct: Product = {
   id: '1',
   name: '测试商品',
   description: '这是一个测试商品的描述',
   price: 99.99,
-  image_url: 'https://example.com/image.jpg',
+  images: [
+    {
+      id: 'img-1',
+      url: 'https://example.com/image1.jpg',
+      cloudflare_id: 'cf-id-1',
+      is_primary: false,
+      alt: '图片1',
+      created_at: '2024-01-01T00:00:00Z',
+    },
+    {
+      id: 'img-2',
+      url: 'https://example.com/image2.jpg',
+      cloudflare_id: 'cf-id-2',
+      is_primary: true,
+      alt: '图片2',
+      created_at: '2024-01-02T00:00:00Z',
+    }
+  ],
+  primary_image_id: 'img-2',
   category: '电子产品',
   stock_quantity: 10,
   is_active: true,
@@ -37,7 +71,7 @@ describe('ProductCard', () => {
   })
 
   it('displays placeholder when no image is provided', () => {
-    const productWithoutImage = { ...mockProduct, image_url: null }
+    const productWithoutImage = { ...mockProduct, images: [], primary_image_id: null }
     render(<ProductCard product={productWithoutImage} {...mockHandlers} />)
     
     expect(screen.getByText('暂无图片')).toBeInTheDocument()
@@ -78,12 +112,46 @@ describe('ProductCard', () => {
     expect(screen.getByText('测试商品')).toBeInTheDocument()
   })
 
-  it('renders with image when image_url is provided', () => {
+  it('renders with fallback URL when cloudflare_id is missing', () => {
+    const productWithFallback = {
+      ...mockProduct,
+      images: [{
+        id: 'img-3',
+        url: 'https://example.com/fallback.jpg',
+        cloudflare_id: null,
+        is_primary: true,
+        alt: '图片3',
+        created_at: '2024-01-03T00:00:00Z',
+      }],
+      primary_image_id: 'img-3'
+    }
+    
+    render(<ProductCard product={productWithFallback} {...mockHandlers} />)
+    
+    const image = screen.getByAltText('图片3')
+    expect(image).toBeInTheDocument()
+    expect(image).toHaveAttribute('src', 'https://example.com/fallback.jpg')
+  })
+
+  it('renders with first image when primary_image_id is not found', () => {
+    const productWithMissingPrimary = {
+      ...mockProduct,
+      primary_image_id: 'non-existent-id'
+    }
+    
+    render(<ProductCard product={productWithMissingPrimary} {...mockHandlers} />)
+    
+    const image = screen.getByAltText('图片1')
+    expect(image).toBeInTheDocument()
+    expect(image).toHaveAttribute('src', 'https://example.com/image1.jpg')
+  })
+
+  it('renders with primary image when images are provided', () => {
     render(<ProductCard product={mockProduct} {...mockHandlers} />)
     
-    const image = screen.getByAltText('测试商品')
+    const image = screen.getByAltText('图片2')
     expect(image).toBeInTheDocument()
-    expect(image).toHaveAttribute('src', mockProduct.image_url)
+    expect(image).toHaveAttribute('src', 'https://example.com/image2.jpg')
   })
 
   it('applies correct CSS classes for active/inactive status', () => {
@@ -97,5 +165,98 @@ describe('ProductCard', () => {
     
     statusElement = screen.getByText('下架')
     expect(statusElement).toHaveClass('bg-red-100', 'text-red-800')
+  })
+
+  describe('Image carousel functionality', () => {
+    it('displays image count indicator when multiple images exist', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} />)
+      
+      expect(screen.getByText('2/2')).toBeInTheDocument()
+    })
+
+    it('shows navigation arrows when multiple images exist', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} />)
+      
+      expect(screen.getByLabelText('上一张图片')).toBeInTheDocument()
+      expect(screen.getByLabelText('下一张图片')).toBeInTheDocument()
+    })
+
+    it('does not show navigation arrows for single image', () => {
+      const singleImageProduct = {
+        ...mockProduct,
+        images: [mockProduct.images[0]],
+        primary_image_id: mockProduct.images[0].id
+      }
+      
+      render(<ProductCard product={singleImageProduct} {...mockHandlers} />)
+      
+      expect(screen.queryByLabelText('上一张图片')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('下一张图片')).not.toBeInTheDocument()
+    })
+
+    it('navigates to next image when next button is clicked', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} />)
+      
+      // Initially showing primary image (index 1)
+      expect(screen.getByText('2/2')).toBeInTheDocument()
+      
+      const nextButton = screen.getByLabelText('下一张图片')
+      fireEvent.click(nextButton)
+      
+      // Should cycle to first image
+      expect(screen.getByText('1/2')).toBeInTheDocument()
+    })
+
+    it('navigates to previous image when prev button is clicked', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} />)
+      
+      // Initially showing primary image (index 1)
+      expect(screen.getByText('2/2')).toBeInTheDocument()
+      
+      const prevButton = screen.getByLabelText('上一张图片')
+      fireEvent.click(prevButton)
+      
+      // Should cycle to first image
+      expect(screen.getByText('1/2')).toBeInTheDocument()
+    })
+
+    it('displays dot indicators for each image', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} />)
+      
+      const dotIndicators = screen.getAllByLabelText(/查看第\d+张图片/)
+      expect(dotIndicators).toHaveLength(2)
+    })
+
+    it('navigates to specific image when dot indicator is clicked', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} />)
+      
+      // Initially showing primary image (index 1)
+      expect(screen.getByText('2/2')).toBeInTheDocument()
+      
+      const firstDot = screen.getByLabelText('查看第1张图片')
+      fireEvent.click(firstDot)
+      
+      expect(screen.getByText('1/2')).toBeInTheDocument()
+    })
+
+    it('starts with primary image displayed', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} />)
+      
+      // Should start with primary image (img-2, which is index 1)
+      expect(screen.getByText('2/2')).toBeInTheDocument()
+      expect(screen.getByText('主图')).toBeInTheDocument()
+    })
+
+    it('starts with first image when no primary image is set', () => {
+      const productWithoutPrimary = {
+        ...mockProduct,
+        primary_image_id: null
+      }
+      
+      render(<ProductCard product={productWithoutPrimary} {...mockHandlers} />)
+      
+      // Should start with first image
+      expect(screen.getByText('1/2')).toBeInTheDocument()
+    })
   })
 })

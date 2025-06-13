@@ -1,3 +1,12 @@
+export interface ProductImage {
+  id: string
+  url: string
+  cloudflare_id: string | null
+  is_primary: boolean
+  alt: string
+  created_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -7,7 +16,8 @@ export interface Database {
           name: string
           description: string | null
           price: number
-          image_url: string | null
+          images: ProductImage[]
+          primary_image_id: string | null
           category: string | null
           stock_quantity: number
           is_active: boolean
@@ -19,7 +29,8 @@ export interface Database {
           name: string
           description?: string | null
           price: number
-          image_url?: string | null
+          images?: ProductImage[]
+          primary_image_id?: string | null
           category?: string | null
           stock_quantity?: number
           is_active?: boolean
@@ -31,7 +42,8 @@ export interface Database {
           name?: string
           description?: string | null
           price?: number
-          image_url?: string | null
+          images?: ProductImage[]
+          primary_image_id?: string | null
           category?: string | null
           stock_quantity?: number
           is_active?: boolean

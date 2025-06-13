@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Product, ProductInsert, ProductUpdate } from '@/types/database'
+import { Product, ProductInsert, ProductUpdate, ProductImage } from '@/types/database'
+import ImageUpload from './ImageUpload'
 
 interface ProductModalProps {
   isOpen: boolean
@@ -15,11 +16,15 @@ export default function ProductModal({ isOpen, onClose, onSave, product }: Produ
     name: '',
     description: '',
     price: 0,
-    image_url: '',
+    images: [],
+    primary_image_id: null,
     category: '',
     stock_quantity: 0,
     is_active: true,
   })
+  
+  const [images, setImages] = useState<ProductImage[]>([])
+  const [primaryImageId, setPrimaryImageId] = useState<string | null>(null)
 
   useEffect(() => {
     if (product) {
@@ -27,32 +32,53 @@ export default function ProductModal({ isOpen, onClose, onSave, product }: Produ
         name: product.name,
         description: product.description || '',
         price: product.price,
-        image_url: product.image_url || '',
+        images: product.images || [],
+        primary_image_id: product.primary_image_id,
         category: product.category || '',
         stock_quantity: product.stock_quantity,
         is_active: product.is_active,
       })
+      setImages(product.images || [])
+      setPrimaryImageId(product.primary_image_id)
     } else {
       setFormData({
         name: '',
         description: '',
         price: 0,
-        image_url: '',
+        images: [],
+        primary_image_id: null,
         category: '',
         stock_quantity: 0,
         is_active: true,
       })
+      setImages([])
+      setPrimaryImageId(null)
     }
   }, [product, isOpen])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    const productData = {
+      ...formData,
+      images,
+      primary_image_id: primaryImageId,
+    }
+    
     if (product) {
-      onSave({ ...formData, id: product.id } as ProductUpdate)
+      onSave({ ...productData, id: product.id } as ProductUpdate)
     } else {
-      onSave(formData)
+      onSave(productData)
     }
     onClose()
+  }
+
+  const handleImagesChange = (newImages: ProductImage[]) => {
+    setImages(newImages)
+  }
+
+  const handlePrimaryImageChange = (imageId: string | null) => {
+    setPrimaryImageId(imageId)
   }
 
   if (!isOpen) return null
@@ -109,15 +135,15 @@ export default function ProductModal({ isOpen, onClose, onSave, product }: Produ
           </div>
 
           <div>
-            <label htmlFor="product-image" className="block text-sm font-medium text-gray-700 mb-1">
-              图片链接
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              商品图片
             </label>
-            <input
-              id="product-image"
-              type="url"
-              value={formData.image_url || ''}
-              onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <ImageUpload
+              images={images}
+              primaryImageId={primaryImageId}
+              onImagesChange={handleImagesChange}
+              onPrimaryImageChange={handlePrimaryImageChange}
+              maxImages={8}
             />
           </div>
 
