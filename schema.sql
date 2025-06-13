@@ -26,6 +26,26 @@ CREATE TRIGGER update_products_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
+-- 管理员表
+CREATE TABLE admin (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  email VARCHAR(255),
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER update_admin_updated_at 
+    BEFORE UPDATE ON admin 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- 插入默认管理员账户 (密码: admin123)
+INSERT INTO admin (username, password, email) VALUES
+('admin', '$2b$10$FIUiLf8l0ClDpWQnEG5iSuqQ.ydHIaw3dC/ZOX1WyRtqXjBZOshUS', 'admin@example.com');
+
 -- 插入示例数据
 INSERT INTO products (name, description, price, image_url, category, stock_quantity) VALUES
 ('iPhone 15 Pro', '最新款 iPhone，配备 A17 Pro 芯片', 9999.00, 'https://picsum.photos/300/200?random=1', '电子产品', 50),

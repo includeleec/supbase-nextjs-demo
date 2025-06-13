@@ -2,9 +2,46 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import HomePage from '../page'
 import { supabase } from '@/lib/supabase'
+import { AuthProvider } from '@/contexts/AuthContext'
+import { Admin } from '@/types/database'
 
 // Mock the supabase module
 jest.mock('@/lib/supabase')
+
+// Mock localStorage
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+}
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock
+})
+
+const mockAdmin: Admin = {
+  id: '1',
+  username: 'admin',
+  password: 'hashedpassword',
+  email: 'admin@example.com',
+  is_active: true,
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+}
+
+const renderWithAuth = (component: React.ReactNode, isAuthenticated = true) => {
+  if (isAuthenticated) {
+    localStorageMock.getItem.mockReturnValue(JSON.stringify(mockAdmin))
+  } else {
+    localStorageMock.getItem.mockReturnValue(null)
+  }
+  
+  return render(
+    <AuthProvider>
+      {component}
+    </AuthProvider>
+  )
+}
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>
 
@@ -62,19 +99,25 @@ describe('HomePage', () => {
     } as any)
   })
 
-  it('renders loading state initially', () => {
+  it('renders login form when not authenticated', () => {
+    renderWithAuth(<HomePage />, false)
+    expect(screen.getByText('管理员登录')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('用户名')).toBeInTheDocument()
+  })
+
+  it('renders loading state initially when authenticated', () => {
     // Mock a long-running request
     mockSupabase.from.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnValue(new Promise(() => {})), // Never resolves
     } as any)
 
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     expect(screen.getByText('加载中...')).toBeInTheDocument()
   })
 
   it('renders products list when data is loaded', async () => {
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     
     await waitFor(() => {
       expect(screen.getByText('商品列表')).toBeInTheDocument()
@@ -90,7 +133,7 @@ describe('HomePage', () => {
       order: jest.fn().mockResolvedValue({ data: [], error: null }),
     } as any)
 
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     
     await waitFor(() => {
       expect(screen.getByText('暂无商品')).toBeInTheDocument()
@@ -100,7 +143,7 @@ describe('HomePage', () => {
 
   it('opens modal when add product button is clicked', async () => {
     const user = userEvent.setup()
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     
     await waitFor(() => {
       expect(screen.getByText('笔记本电脑')).toBeInTheDocument()
@@ -114,7 +157,7 @@ describe('HomePage', () => {
 
   it('filters products by search term', async () => {
     const user = userEvent.setup()
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     
     await waitFor(() => {
       expect(screen.getByText('笔记本电脑')).toBeInTheDocument()
@@ -132,7 +175,7 @@ describe('HomePage', () => {
 
   it('filters products by category', async () => {
     const user = userEvent.setup()
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     
     await waitFor(() => {
       expect(screen.getByText('笔记本电脑')).toBeInTheDocument()
@@ -150,7 +193,7 @@ describe('HomePage', () => {
 
   it('shows "没有找到匹配的商品" when filter returns no results', async () => {
     const user = userEvent.setup()
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     
     await waitFor(() => {
       expect(screen.getByText('笔记本电脑')).toBeInTheDocument()
@@ -170,7 +213,7 @@ describe('HomePage', () => {
     // Mock window.confirm
     const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
 
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     
     await waitFor(() => {
       expect(screen.getByText('笔记本电脑')).toBeInTheDocument()
@@ -194,7 +237,7 @@ describe('HomePage', () => {
 
   it('handles product editing', async () => {
     const user = userEvent.setup()
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     
     await waitFor(() => {
       expect(screen.getByText('笔记本电脑')).toBeInTheDocument()
@@ -231,7 +274,7 @@ describe('HomePage', () => {
       }),
     } as any)
 
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     
     await waitFor(() => {
       expect(screen.getByText('笔记本电脑')).toBeInTheDocument()
@@ -266,7 +309,7 @@ describe('HomePage', () => {
       order: jest.fn().mockResolvedValue({ data: null, error: new Error('API Error') }),
     } as any)
 
-    render(<HomePage />)
+    renderWithAuth(<HomePage />)
     
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith('获取商品失败:', expect.any(Error))

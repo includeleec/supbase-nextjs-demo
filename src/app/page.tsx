@@ -6,8 +6,11 @@ import { Product, ProductInsert, ProductUpdate } from '@/types/database'
 import ProductCard from '@/components/ProductCard'
 import ProductModal from '@/components/ProductModal'
 import { toast } from '@/lib/toast'
+import { useAuth } from '@/contexts/AuthContext'
+import LoginForm from '@/components/LoginForm'
 
 export default function HomePage() {
+  const { isAuthenticated, isLoading } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -18,8 +21,10 @@ export default function HomePage() {
   const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean))) as string[]
 
   useEffect(() => {
-    fetchProducts()
-  }, [])
+    if (isAuthenticated) {
+      fetchProducts()
+    }
+  }, [isAuthenticated])
 
   const fetchProducts = async () => {
     try {
@@ -98,6 +103,18 @@ export default function HomePage() {
     const matchesCategory = !selectedCategory || product.category === selectedCategory
     return matchesSearch && matchesCategory
   })
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-gray-600">加载中...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <LoginForm />
+  }
 
   if (loading) {
     return (
