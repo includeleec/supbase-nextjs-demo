@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import ProductCard from '../ProductCard'
-import { Product } from '@/types/database'
+import { Product, ProductTranslation } from '@/types/database'
 
 // Mock the cloudflare-images module
 jest.mock('@/lib/cloudflare-images', () => ({
@@ -18,10 +18,17 @@ jest.mock('@/lib/debug-images', () => ({
   debugImageDisplay: jest.fn()
 }))
 
+const mockTranslations: ProductTranslation[] = [
+  { language: 'en', name: 'Test Product', description: 'This is a test product description' },
+  { language: 'zh', name: '测试商品', description: '这是一个测试商品的描述' }
+]
+
 const mockProduct: Product = {
   id: '1',
   name: '测试商品',
   description: '这是一个测试商品的描述',
+  slug: 'test-product',
+  translations: mockTranslations,
   price: 99.99,
   images: [
     {
@@ -59,7 +66,7 @@ describe('ProductCard', () => {
     jest.clearAllMocks()
   })
 
-  it('renders product information correctly', () => {
+  it('renders product information correctly with default Chinese language', () => {
     render(<ProductCard product={mockProduct} {...mockHandlers} />)
     
     expect(screen.getByText('测试商品')).toBeInTheDocument()
@@ -68,6 +75,7 @@ describe('ProductCard', () => {
     expect(screen.getByText('电子产品')).toBeInTheDocument()
     expect(screen.getByText('库存: 10')).toBeInTheDocument()
     expect(screen.getByText('上架')).toBeInTheDocument()
+    expect(screen.getByText('Slug: test-product')).toBeInTheDocument()
   })
 
   it('displays placeholder when no image is provided', () => {
@@ -257,6 +265,61 @@ describe('ProductCard', () => {
       
       // Should start with first image
       expect(screen.getByText('1/2')).toBeInTheDocument()
+    })
+  })
+
+  describe('Multilingual support', () => {
+    it('renders content in English when language is set to en', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} language="en" />)
+      
+      expect(screen.getByText('Test Product')).toBeInTheDocument()
+      expect(screen.getByText('This is a test product description')).toBeInTheDocument()
+    })
+
+    it('renders content in Chinese when language is set to zh', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} language="zh" />)
+      
+      expect(screen.getByText('测试商品')).toBeInTheDocument()
+      expect(screen.getByText('这是一个测试商品的描述')).toBeInTheDocument()
+    })
+
+    it('falls back to English when requested language is not available', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} language="ja" />)
+      
+      // Should fall back to English translation
+      expect(screen.getByText('Test Product')).toBeInTheDocument()
+      expect(screen.getByText('This is a test product description')).toBeInTheDocument()
+    })
+
+    it('falls back to original fields when no translations are available', () => {
+      const productWithoutTranslations = { ...mockProduct, translations: [] }
+      render(<ProductCard product={productWithoutTranslations} {...mockHandlers} language="en" />)
+      
+      // Should use original name and description fields
+      expect(screen.getByText('测试商品')).toBeInTheDocument()
+      expect(screen.getByText('这是一个测试商品的描述')).toBeInTheDocument()
+    })
+  })
+
+  describe('Slug functionality', () => {
+    it('displays slug when available', () => {
+      render(<ProductCard product={mockProduct} {...mockHandlers} />)
+      
+      expect(screen.getByText('Slug: test-product')).toBeInTheDocument()
+    })
+
+    it('does not display slug section when slug is null', () => {
+      const productWithoutSlug = { ...mockProduct, slug: null }
+      render(<ProductCard product={productWithoutSlug} {...mockHandlers} />)
+      
+      expect(screen.queryByText(/Slug:/)).not.toBeInTheDocument()
+    })
+
+    it('does not display slug section when slug is empty', () => {
+      const productWithEmptySlug = { ...mockProduct, slug: '' }
+      render(<ProductCard product={productWithEmptySlug} {...mockHandlers} />)
+      
+      expect(screen.queryByText(/Slug:/)).not.toBeInTheDocument()
     })
   })
 })

@@ -7,6 +7,21 @@ export interface ProductImage {
   created_at: string
 }
 
+export type SupportedLanguage = 'zh' | 'en' | 'ja' | 'ko'
+
+export interface ProductTranslation {
+  language: SupportedLanguage
+  name: string
+  description: string
+}
+
+export const SUPPORTED_LANGUAGES: { code: SupportedLanguage; name: string }[] = [
+  { code: 'zh', name: '中文' },
+  { code: 'en', name: 'English' },
+  { code: 'ja', name: '日本語' },
+  { code: 'ko', name: '한국어' }
+]
+
 export interface Database {
   public: {
     Tables: {
@@ -15,6 +30,8 @@ export interface Database {
           id: string
           name: string
           description: string | null
+          slug: string | null
+          translations: ProductTranslation[]
           price: number
           images: ProductImage[]
           primary_image_id: string | null
@@ -28,6 +45,8 @@ export interface Database {
           id?: string
           name: string
           description?: string | null
+          slug?: string | null
+          translations?: ProductTranslation[]
           price: number
           images?: ProductImage[]
           primary_image_id?: string | null
@@ -41,6 +60,8 @@ export interface Database {
           id?: string
           name?: string
           description?: string | null
+          slug?: string | null
+          translations?: ProductTranslation[]
           price?: number
           images?: ProductImage[]
           primary_image_id?: string | null

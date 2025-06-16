@@ -1,14 +1,22 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ProductModal from '../ProductModal'
-import { Product } from '@/types/database'
+import { Product, ProductTranslation } from '@/types/database'
+
+const mockTranslations: ProductTranslation[] = [
+  { language: 'en', name: 'Test Product', description: 'This is a test product description' },
+  { language: 'zh', name: '测试商品', description: '这是一个测试商品的描述' }
+]
 
 const mockProduct: Product = {
   id: '1',
   name: '测试商品',
   description: '这是一个测试商品的描述',
+  slug: 'test-product',
+  translations: mockTranslations,
   price: 99.99,
-  image_url: 'https://example.com/image.jpg',
+  images: [],
+  primary_image_id: null,
   category: '电子产品',
   stock_quantity: 10,
   is_active: true,
@@ -49,10 +57,10 @@ describe('ProductModal', () => {
     expect(screen.getByText('添加')).toBeInTheDocument()
     
     // Check all form fields are present
-    expect(screen.getByLabelText('商品名称 *')).toBeInTheDocument()
-    expect(screen.getByLabelText('商品描述')).toBeInTheDocument()
+    expect(screen.getByText('支持语言 * (英文必选)')).toBeInTheDocument()
+    expect(screen.getByText('English')).toBeInTheDocument()
+    expect(screen.getByLabelText('URL Slug *')).toBeInTheDocument()
     expect(screen.getByLabelText('价格 *')).toBeInTheDocument()
-    expect(screen.getByLabelText('图片链接')).toBeInTheDocument()
     expect(screen.getByLabelText('分类')).toBeInTheDocument()
     expect(screen.getByLabelText('库存数量')).toBeInTheDocument()
     expect(screen.getByLabelText('上架销售')).toBeInTheDocument()
@@ -71,10 +79,10 @@ describe('ProductModal', () => {
     expect(screen.getByText('更新')).toBeInTheDocument()
     
     // Check form is populated with product data
-    expect(screen.getByDisplayValue('测试商品')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('这是一个测试商品的描述')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Test Product')).toBeInTheDocument() // English name
+    expect(screen.getByDisplayValue('测试商品')).toBeInTheDocument() // Chinese name
+    expect(screen.getByDisplayValue('test-product')).toBeInTheDocument() // slug
     expect(screen.getByDisplayValue('99.99')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('https://example.com/image.jpg')).toBeInTheDocument()
     expect(screen.getByDisplayValue('电子产品')).toBeInTheDocument()
     expect(screen.getByDisplayValue('10')).toBeInTheDocument()
   })
@@ -116,11 +124,10 @@ describe('ProductModal', () => {
       />
     )
     
-    // Fill form fields
-    await user.type(screen.getByLabelText('商品名称 *'), '新商品')
-    await user.type(screen.getByLabelText('商品描述'), '新商品描述')
+    // Fill form fields - English name (required)
+    await user.type(screen.getByLabelText('商品名称 *'), 'New Product')
+    await user.type(screen.getByLabelText('URL Slug *'), 'new-product')
     await user.type(screen.getByLabelText('价格 *'), '199.99')
-    await user.type(screen.getByLabelText('图片链接'), 'https://example.com/new-image.jpg')
     await user.type(screen.getByLabelText('分类'), '新分类')
     await user.type(screen.getByLabelText('库存数量'), '20')
     
@@ -129,15 +136,20 @@ describe('ProductModal', () => {
     await user.click(submitButton)
     
     await waitFor(() => {
-      expect(mockHandlers.onSave).toHaveBeenCalledWith({
-        name: '新商品',
-        description: '新商品描述',
+      expect(mockHandlers.onSave).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'New Product',
+        slug: 'new-product',
         price: 199.99,
-        image_url: 'https://example.com/new-image.jpg',
         category: '新分类',
         stock_quantity: 20,
         is_active: true,
-      })
+        translations: expect.arrayContaining([
+          expect.objectContaining({
+            language: 'en',
+            name: 'New Product'
+          })
+        ])
+      }))
     })
     
     expect(mockHandlers.onClose).toHaveBeenCalledTimes(1)
@@ -154,25 +166,30 @@ describe('ProductModal', () => {
     )
     
     // Modify product name
-    const nameInput = screen.getByLabelText('商品名称 *')
+    const nameInput = screen.getByDisplayValue('Test Product')
     await user.clear(nameInput)
-    await user.type(nameInput, '更新后的商品')
+    await user.type(nameInput, 'Updated Product')
     
     // Submit form
     const submitButton = screen.getByText('更新')
     await user.click(submitButton)
     
     await waitFor(() => {
-      expect(mockHandlers.onSave).toHaveBeenCalledWith({
+      expect(mockHandlers.onSave).toHaveBeenCalledWith(expect.objectContaining({
         id: mockProduct.id,
-        name: '更新后的商品',
-        description: mockProduct.description,
+        name: 'Updated Product',
+        slug: mockProduct.slug,
         price: mockProduct.price,
-        image_url: mockProduct.image_url,
         category: mockProduct.category,
         stock_quantity: mockProduct.stock_quantity,
         is_active: mockProduct.is_active,
-      })
+        translations: expect.arrayContaining([
+          expect.objectContaining({
+            language: 'en',
+            name: 'Updated Product'
+          })
+        ])
+      }))
     })
     
     expect(mockHandlers.onClose).toHaveBeenCalledTimes(1)
@@ -253,6 +270,106 @@ describe('ProductModal', () => {
       />
     )
     
-    expect(screen.getByLabelText('商品名称 *')).toHaveValue('')
+    expect(screen.getByLabelText('URL Slug *')).toHaveValue('')
+  })
+
+  describe('Multilingual functionality', () => {
+    it('renders language selection with English required', () => {
+      render(
+        <ProductModal
+          isOpen={true}
+          {...mockHandlers}
+        />
+      )
+      
+      expect(screen.getByText('支持语言 * (英文必选)')).toBeInTheDocument()
+      
+      const englishCheckbox = screen.getByLabelText(/English/)
+      expect(englishCheckbox).toBeChecked()
+      expect(englishCheckbox).toBeDisabled()
+    })
+
+    it('allows adding and removing non-English languages', async () => {
+      const user = userEvent.setup()
+      render(
+        <ProductModal
+          isOpen={true}
+          {...mockHandlers}
+        />
+      )
+      
+      // Add Chinese language
+      const chineseCheckbox = screen.getByLabelText(/中文/)
+      expect(chineseCheckbox).not.toBeChecked()
+      
+      await user.click(chineseCheckbox)
+      expect(chineseCheckbox).toBeChecked()
+      
+      // Should show Chinese input fields
+      expect(screen.getByText('中文')).toBeInTheDocument()
+      
+      // Remove Chinese language
+      await user.click(chineseCheckbox)
+      expect(chineseCheckbox).not.toBeChecked()
+    })
+
+    it('loads existing translations when editing product', () => {
+      render(
+        <ProductModal
+          isOpen={true}
+          product={mockProduct}
+          {...mockHandlers}
+        />
+      )
+      
+      // Should show both English and Chinese sections
+      expect(screen.getByText('English')).toBeInTheDocument()
+      expect(screen.getByText('中文')).toBeInTheDocument()
+      
+      // Should show translated content
+      expect(screen.getByDisplayValue('Test Product')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('测试商品')).toBeInTheDocument()
+    })
+  })
+
+  describe('Slug functionality', () => {
+    it('renders slug input field', () => {
+      render(
+        <ProductModal
+          isOpen={true}
+          {...mockHandlers}
+        />
+      )
+      
+      expect(screen.getByLabelText('URL Slug *')).toBeInTheDocument()
+      expect(screen.getByText('用于生成 SEO 友好的 URL，只能包含字母、数字、连字符')).toBeInTheDocument()
+    })
+
+    it('allows manual slug input', async () => {
+      const user = userEvent.setup()
+      render(
+        <ProductModal
+          isOpen={true}
+          {...mockHandlers}
+        />
+      )
+      
+      const slugInput = screen.getByLabelText('URL Slug *')
+      await user.type(slugInput, 'custom-slug')
+      
+      expect(slugInput).toHaveValue('custom-slug')
+    })
+
+    it('loads existing slug when editing product', () => {
+      render(
+        <ProductModal
+          isOpen={true}
+          product={mockProduct}
+          {...mockHandlers}
+        />
+      )
+      
+      expect(screen.getByDisplayValue('test-product')).toBeInTheDocument()
+    })
   })
 })

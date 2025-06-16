@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { Product } from '@/types/database'
+import { Product, SupportedLanguage } from '@/types/database'
 import { useState, useEffect } from 'react'
 import { getImageVariants } from '@/lib/cloudflare-images'
 import { debugImageDisplay } from '@/lib/debug-images'
@@ -10,11 +10,40 @@ interface ProductCardProps {
   product: Product
   onEdit: (product: Product) => void
   onDelete: (id: string) => void
+  language?: SupportedLanguage
 }
 
-export default function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
+export default function ProductCard({ product, onEdit, onDelete, language = 'zh' }: ProductCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
+  
+  // 获取当前语言的翻译内容
+  const getLocalizedContent = () => {
+    if (product.translations && product.translations.length > 0) {
+      // 先尝试找到指定语言的翻译
+      const translation = product.translations.find(t => t.language === language)
+      if (translation) {
+        return { name: translation.name, description: translation.description }
+      }
+      
+      // 如果没有指定语言，尝试使用英文
+      const enTranslation = product.translations.find(t => t.language === 'en')
+      if (enTranslation) {
+        return { name: enTranslation.name, description: enTranslation.description }
+      }
+      
+      // 如果没有英文，使用第一个可用的翻译
+      const firstTranslation = product.translations[0]
+      if (firstTranslation) {
+        return { name: firstTranslation.name, description: firstTranslation.description }
+      }
+    }
+    
+    // 如果没有翻译数据，使用原始字段
+    return { name: product.name, description: product.description || '' }
+  }
+  
+  const { name: localizedName, description: localizedDescription } = getLocalizedContent()
   
   // 调试图片显示问题
   useEffect(() => {
@@ -98,7 +127,7 @@ export default function ProductCard({ product, onEdit, onDelete }: ProductCardPr
           <>
             <Image
               src={currentImageUrl}
-              alt={currentImage?.alt || product.name}
+              alt={currentImage?.alt || localizedName}
               width={300}
               height={200}
               className="rounded-lg object-cover w-full h-48 transition-all duration-300"
@@ -172,16 +201,22 @@ export default function ProductCard({ product, onEdit, onDelete }: ProductCardPr
         )}
       </div>
       
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">{localizedName}</h3>
       
-      {product.description && (
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
+      {localizedDescription && (
+        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{localizedDescription}</p>
       )}
       
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <span className="text-2xl font-bold text-red-600">¥{product.price}</span>
         <span className="text-sm text-gray-500">{product.category}</span>
       </div>
+      
+      {product.slug && (
+        <div className="mb-4">
+          <span className="text-xs text-gray-400">Slug: {product.slug}</span>
+        </div>
+      )}
       
       <div className="flex items-center justify-between mb-4">
         <span className="text-sm text-gray-600">库存: {product.stock_quantity}</span>

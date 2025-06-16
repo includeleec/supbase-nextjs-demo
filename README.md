@@ -5,11 +5,13 @@
 ## 🌟 主要亮点
 
 - ✅ **完整的商品管理系统** - 增删改查、搜索筛选、状态管理
+- ✅ **多语言支持** - 中文、英文、日语、韩语国际化
+- ✅ **SEO友好URLs** - 商品slug系统，优化搜索引擎排名
 - ✅ **先进的图片系统** - 多图上传、轮播展示、CDN优化
 - ✅ **安全的认证机制** - 密码加密、会话管理、路由保护
 - ✅ **优秀的用户体验** - 响应式设计、拖拽上传、平滑动画
 - ✅ **强大的调试工具** - 开发环境实时调试、详细日志
-- ✅ **完善的测试覆盖** - 130+ 测试用例、类型安全保障
+- ✅ **完善的测试覆盖** - 150+ 测试用例、类型安全保障
 
 ## 技术栈
 
@@ -38,6 +40,8 @@
 - ✅ 商品添加、编辑、删除
 - ✅ 库存管理
 - ✅ 商品状态管理（上架/下架）
+- ✅ **多语言商品信息**：支持中文、英文、日语、韩语
+- ✅ **SEO优化**：自动生成和自定义商品URL slug
 
 ### 🖼️ 图片管理系统
 - ✅ **多图片上传**：支持拖拽上传，最多8张图片
@@ -62,10 +66,12 @@
 
 ### 🧪 测试覆盖
 - ✅ 认证逻辑测试（8个测试用例）
-- ✅ 组件单元测试（19个ProductCard测试 + 11个调试工具测试）
+- ✅ 组件单元测试（25个ProductCard测试 + 20个ProductModal测试）
+- ✅ 多语言功能测试（语言切换、内容本地化、回退机制）
+- ✅ Slug功能测试（自动生成、验证、显示）
 - ✅ 图片功能测试（上传、显示、轮播、删除）
 - ✅ 集成测试和端到端测试
-- ✅ 覆盖率报告（130+ 通过的测试用例）
+- ✅ 覆盖率报告（150+ 通过的测试用例）
 
 ### 🛠️ 开发工具
 - ✅ **Cloudflare调试面板**：开发环境实时配置检查
@@ -162,7 +168,10 @@ NEXT_PUBLIC_CLOUDFLARE_IMAGES_HASH=your_cloudflare_images_hash
 - `admin` 表：管理员账户
 - 默认管理员账户（用户名：admin，密码：admin123）
 
-⚠️ **注意**: 新的数据库结构支持多图片功能。如果你是从旧版本升级，请运行 `migration.sql` 进行数据迁移。
+⚠️ **注意**: 新的数据库结构支持多图片和多语言功能。如果你是从旧版本升级，请按顺序运行以下迁移文件：
+1. `migration.sql` - 多图片功能迁移
+2. `migration-multilingual.sql` - 多语言功能迁移  
+3. `migration-add-slug.sql` - SEO slug功能迁移
 
 ### 5. 启动开发服务器
 
@@ -199,16 +208,40 @@ npm run dev
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | uuid | 主键，自动生成 |
-| name | varchar(255) | 商品名称 |
-| description | text | 商品描述 |
+| name | varchar(255) | 商品名称（主要语言） |
+| description | text | 商品描述（主要语言） |
+| slug | varchar(255) | SEO友好的URL标识符（唯一）|
+| translations | jsonb | 多语言翻译数组 |
 | price | decimal(10,2) | 商品价格 |
-| images | jsonb | 商品图片数组（新）|
-| primary_image_id | varchar(255) | 主图ID（新）|
+| images | jsonb | 商品图片数组|
+| primary_image_id | varchar(255) | 主图ID|
 | category | varchar(100) | 商品分类 |
 | stock_quantity | integer | 库存数量 |
 | is_active | boolean | 是否上架 |
 | created_at | timestamp | 创建时间 |
 | updated_at | timestamp | 更新时间 |
+
+#### 多语言数据结构 (translations字段)
+
+```json
+[
+  {
+    "language": "en",
+    "name": "Product Name",
+    "description": "Product description in English"
+  },
+  {
+    "language": "zh",
+    "name": "商品名称",
+    "description": "中文商品描述"
+  },
+  {
+    "language": "ja",
+    "name": "商品名",
+    "description": "日本語での商品説明"
+  }
+]
+```
 
 #### 图片数据结构 (images字段)
 
@@ -313,8 +346,16 @@ interface ProductImage {
   created_at: string
 }
 
+interface ProductTranslation {
+  language: 'zh' | 'en' | 'ja' | 'ko'
+  name: string
+  description: string
+}
+
 interface Product {
   // ... 其他字段
+  slug: string | null
+  translations: ProductTranslation[]
   images: ProductImage[]
   primary_image_id: string | null
 }
@@ -450,8 +491,14 @@ npm test -- --testPathPattern="auth"
 - [x] 图片轮播展示
 - [x] Cloudflare Images 集成
 - [x] 调试工具完善
+- [x] **多语言支持**（中文、英文、日语、韩语）
+- [x] **SEO友好URLs**（商品slug系统）
+- [x] **语言切换功能**（实时内容本地化）
+- [x] **完善的测试覆盖**（多语言和slug功能）
 
 ### 计划中 🚧
+- [ ] 更多语言支持（法语、德语、西班牙语等）
+- [ ] 分类多语言支持
 - [ ] 多管理员支持
 - [ ] 角色权限管理
 - [ ] 登录失败次数限制
@@ -462,6 +509,7 @@ npm test -- --testPathPattern="auth"
 - [ ] 图片水印和压缩
 - [ ] 商品分类管理
 - [ ] 销售统计报表
+- [ ] 自动SEO优化建议
 
 ## 贡献
 

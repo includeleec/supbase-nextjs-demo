@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Product, ProductInsert, ProductUpdate } from '@/types/database'
+import { Product, ProductInsert, ProductUpdate, SupportedLanguage, SUPPORTED_LANGUAGES } from '@/types/database'
 import ProductCard from '@/components/ProductCard'
 import ProductModal from '@/components/ProductModal'
 import { toast } from '@/lib/toast'
@@ -18,6 +18,7 @@ export default function HomePage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('zh')
 
   const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean))) as string[]
 
@@ -98,9 +99,22 @@ export default function HomePage() {
     setIsModalOpen(true)
   }
 
+  const getLocalizedProductContent = (product: Product) => {
+    if (product.translations && product.translations.length > 0) {
+      const translation = product.translations.find(t => t.language === currentLanguage) ||
+                         product.translations.find(t => t.language === 'en') ||
+                         product.translations[0]
+      if (translation) {
+        return { name: translation.name, description: translation.description }
+      }
+    }
+    return { name: product.name, description: product.description || '' }
+  }
+
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    const { name, description } = getLocalizedProductContent(product)
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         description.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = !selectedCategory || product.category === selectedCategory
     return matchesSearch && matchesCategory
   })
@@ -168,6 +182,19 @@ export default function HomePage() {
             ))}
           </select>
         </div>
+        <div>
+          <select
+            value={currentLanguage}
+            onChange={(e) => setCurrentLanguage(e.target.value as SupportedLanguage)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {filteredProducts.length === 0 ? (
@@ -192,6 +219,7 @@ export default function HomePage() {
               product={product}
               onEdit={handleEditProduct}
               onDelete={handleDeleteProduct}
+              language={currentLanguage}
             />
           ))}
         </div>
